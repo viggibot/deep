@@ -1,0 +1,112 @@
+Practical 7 - Implement a simple form of a recurrent neural network.
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+def minimax(board, depth, is_maximizing):
+    if check_win(board, 'AI'):
+        return 10 - depth
+    elif check_win(board, 'Player'):
+        return depth - 10
+    elif 0 not in board:
+        return 0
+
+    if is_maximizing:
+        best_score = -float('inf')
+        for i in range(9):
+            if board[i] == 0:
+                board[i] = -1  # AI makes a move
+                score = minimax(board, depth + 1, False)
+                board[i] = 0  # Undo the move
+                best_score = max(score, best_score)
+        return best_score
+    else:
+        best_score = float('inf')
+        for i in range(9):
+            if board[i] == 0:
+                board[i] = 1  # Player makes a move
+                score = minimax(board, depth + 1, True)
+                board[i] = 0  # Undo the move
+                best_score = min(score, best_score)
+        return best_score
+
+
+
+def find_best_move(board):
+    best_score = -float('inf')
+    best_move = -1
+    for i in range(9):
+        if board[i] == 0:
+            board[i] = -1  # AI makes a move
+            score = minimax(board, 0, False)
+            board[i] = 0  # Undo the move
+            if score > best_score:
+                best_score = score
+                best_move = i
+    return best_move
+
+
+
+
+def print_board(state):
+    chars = [' ', 'X', 'O']
+    for i in range(3):
+        print('|'.join(chars[state[i * 3 + j]] for j in range(3)))
+        if i < 2:
+            print("-----")
+
+def play_game():
+    game_state = [0] * 9  # 0: empty, 1: player (X), -1: AI (O)
+    player_turn = True
+
+    while True:
+        if player_turn:
+            print_board(game_state)
+            move = int(input("Your move (0-8): "))
+            if game_state[move] != 0:
+                print("Illegal move! Try again.")
+                continue
+            game_state[move] = 1
+        else:
+            move = find_best_move(game_state)
+            if move == -1:
+                print("No legal moves left. It's a draw!")
+                break
+            print(f"AI moves at {move}")
+            game_state[move] = -1
+
+        if check_win(game_state, 'Player'):
+            print_board(game_state)
+            print("Player wins!")
+            break
+        elif check_win(game_state, 'AI'):
+            print_board(game_state)
+            print("AI wins!")
+            break
+        elif 0 not in game_state:
+            print_board(game_state)
+            print("It's a draw!")
+            break
+
+        player_turn = not player_turn  # Switch turns after each move
+
+
+
+
+
+def check_win(board, player):
+    winning_combinations = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],  # Rows
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],  # Columns
+        [0, 4, 8], [2, 4, 6]              # Diagonals
+    ]
+    player_marker = 1 if player == 'Player' else -1
+    
+    for combo in winning_combinations:
+        if board[combo[0]] == board[combo[1]] == board[combo[2]] == player_marker:
+            return True
+    return False
+
+        
+# Initialize player_turn before calling play_game
+player_turn = True
+play_game()

@@ -1,0 +1,91 @@
+Practical 6 - Implementation of a Generative Adversarial Network for generating synthetic shapes
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+
+latent_dim = 100
+height = 28
+width = 28
+channels = 1
+
+
+generator = keras.Sequential([
+    keras.layers.Dense(128 * 7 * 7, activation='relu', input_shape=(latent_dim,)),
+    keras.layers.Reshape((7, 7, 128)),
+    keras.layers.Conv2DTranspose(128, (4,4), strides=(2,2), padding='same', activation='relu'),
+    keras.layers.Conv2DTranspose(128, (4,4), strides=(2,2), padding='same', activation='relu'),
+    keras.layers.Conv2D(channels, (7,7), padding='same', activation='sigmoid')
+])
+
+
+discriminator = keras.Sequential([
+    keras.layers.Conv2D(64, (3,3), strides=(2,2), padding='same', input_shape=[height, width, channels]),
+    keras.layers.LeakyReLU(alpha=0.2),
+    keras.layers.Dropout(0.4),
+    keras.layers.Conv2D(128, (3,3), strides=(2,2), padding='same'),
+    keras.layers.LeakyReLU(alpha=0.2),
+    keras.layers.Dropout(0.4),
+    keras.layers.Flatten(),
+    keras.layers.Dense(1, activation='sigmoid')
+])
+
+
+
+
+
+discriminator.compile(optimizer='adam', loss='binary_crossentropy')
+
+discriminator.trainable = False
+gan_input = keras.Input(shape=(latent_dim,))
+gan_output = discriminator(generator(gan_input))
+gan = keras.Model(gan_input, gan_output)
+gan.compile(optimizer='adam', loss='binary_crossentropy')
+
+
+
+def generate_real_shapes(n_samples):
+    # Generate random circles and squares as real shapes
+    X_circle = np.random.uniform(low=0.3, high=0.7, size=(n_samples, 28, 28, 1))
+    X_square = np.random.uniform(low=0.3, high=0.7, size=(n_samples, 28, 28, 1))
+    
+    # Add noise to shapes
+    X_circle += np.random.normal(loc=0, scale=0.1, size=(n_samples, 28, 28, 1))
+    X_square += np.random.normal(loc=0, scale=0.1, size=(n_samples, 28, 28, 1))
+    
+    # Labels: 1 for circles, 0 for squares
+    y_circle = np.ones((n_samples, 1))
+    y_square = np.zeros((n_samples, 1))
+    
+    return np.concatenate((X_circle, X_square)), np.concatenate((y_circle, y_square))
+
+real_shapes, labels = generate_real_shapes(1000)
+
+
+
+
+def train_gan(gan, generator, discriminator, epochs=100, batch_size=32):
+    for epoch in range(epochs):
+        noise = np.random.normal(0, 1, (batch_size, latent_dim))
+        generated_shapes = generator.predict(noise)
+        real_shapes, labels = generate_real_shapes(batch_size)
+
+        x_combined = np.concatenate([real_shapes, generated_shapes])
+        y_combined = np.concatenate([labels, np.zeros((batch_size, 1))])
+
+        d_loss = discriminator.train_on_batch(x_combined, y_combined)
+        noise = np.random.normal(0, 1, (batch_size, latent_dim))
+        y_mislabeled = np.ones((batch_size, 1))
+
+        g_loss = gan.train_on_batch(noise, y_mislabeled)
+
+        print(f'Epoch: {epoch+1}, Discriminator Loss: {d_loss}, Generator Loss: {g_loss}')
+
+# Example usage
+train_gan(gan, generator, discriminator, epochs=100, batch_size=32)

@@ -1,0 +1,58 @@
+Practical 3 - Implementing deep learning for recognizing classes for datasets like CIFAR-10 images
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+from PIL import Image
+
+
+
+(x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
+
+x_train = x_train.astype("float32") / 255.0
+x_test = x_test.astype("float32") / 255.0
+
+
+
+y_train = keras.utils.to_categorical(y_train, num_classes=10)
+y_test = keras.utils.to_categorical(y_test, num_classes=10)
+
+model = keras.models.Sequential([
+    keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)),
+    keras.layers.MaxPooling2D((2, 2)),
+    keras.layers.Conv2D(64, (3, 3), activation='relu'),
+    keras.layers.MaxPooling2D((2, 2)),
+    keras.layers.Conv2D(64, (3, 3), activation='relu'),
+    keras.layers.Flatten(),
+    keras.layers.Dense(64, activation='relu'),
+    keras.layers.Dense(10, activation='softmax')
+])
+
+
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+history = model.fit(x_train, y_train, epochs=10, batch_size=64, validation_data=(x_test, y_test))
+
+model.save("cifar10_model.h5")
+
+model = keras.models.load_model("cifar10_model.h5")
+
+
+img = Image.open("C:/Users/Mukesh/OneDrive/Pictures/cat.jpg")
+img = img.resize((32, 32))
+img_array = np.array(img)
+
+
+if img_array.shape[-1] == 4:
+    img_array = img_array[..., :3]
+img_array = img_array.astype("float32") / 255.0
+img_array = np.expand_dims(img_array, axis=0)
+
+predictions = model.predict(img_array)
+
+class_label = np.argmax(predictions)
+
+print("Predicted class label:", class_label)
